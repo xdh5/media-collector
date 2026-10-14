@@ -22,7 +22,7 @@ media_collector/
 
 ## 在 media-factory 中
 
-本仓库是 [media-factory](https://github.com/xdh5/media-factory) 的子仓库，路径为 `integrations/media-collector`。工厂代码通过 `core.tools.download` 转到这里。嵌在工厂里时，视频和 Cookie 写到工厂仓库的 `data/download/`。
+本仓库是 [media-factory](https://github.com/xdh5/media-factory) 的子仓库，路径为 `integrations/media-collector`。工厂代码直接 `from media_collector import download`。嵌在工厂里时，视频和 Cookie 写到工厂仓库的 `data/download/`。
 
 独立运行时，这些文件写到本仓库的 `data/download/`。
 
