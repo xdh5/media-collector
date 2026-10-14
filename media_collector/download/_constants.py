@@ -43,7 +43,7 @@ PLATFORM_REFERER = {
     "kuaishou": "https://www.kuaishou.com/",
 }
 
-# 对外返回的中文名（douyin_research 等调用方依赖"抖音"字面量）。
+# 对外返回的中文名（收集财经文案等调用方依赖"抖音"字面量）。
 PLATFORM_NAMES = {
     "douyin": "抖音",
     "bilibili": "哔哩哔哩",
