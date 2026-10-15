@@ -377,7 +377,15 @@ def list_author_works(profile_url: str, limit: int) -> list[dict]:
             webid,
         )
         page = payload.get("aweme_list")
-        if not isinstance(page, list) or not page:
+        if not isinstance(page, list) or payload.get("has_more") not in (0, 1):
+            raise AuthorWorksError(
+                "作者作品分页响应不完整，无法继续读取早期作品；不能将已读取的近期作品当作全部作品。"
+                "请更新登录后的 DY_COOKIES 后重试，也可能是接口风控或签名被拦截",
+                {"read_count": len(works), "max_cursor": max_cursor},
+            )
+        if not page:
+            if payload.get("has_more") == 1:
+                raise AuthorWorksError("作者作品列表仍有下一页但未返回作品，扫描中断", {"read_count": len(works)})
             break
         for item in page:
             if not isinstance(item, dict):
@@ -391,6 +399,6 @@ def list_author_works(profile_url: str, limit: int) -> list[dict]:
         if payload.get("has_more") != 1:
             break
         max_cursor = str(payload.get("max_cursor") or "")
-        if not max_cursor or max_cursor == "0":
-            break
+        if not max_cursor or max_cursor == "0" or max_cursor in seen_cursors:
+            raise AuthorWorksError("作者作品列表仍有下一页但翻页游标无效，扫描中断", {"read_count": len(works)})
     return works

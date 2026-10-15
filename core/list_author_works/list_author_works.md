@@ -12,6 +12,8 @@
 
 作品还包含 `description`（平台原文，与抖音 `desc` 对应）和 `duration_seconds`（秒，缺失时为 0），供上层按需判断剧集与疑似合集，不在采集层判断业务归属。
 
+翻页响应缺少作品列表、分页标志，或仍有下一页但游标无效时明确报错；不能把仅含 `status_code: 0` 的受限响应视为扫描结束。此类情况可能由登录态受限、接口风控或签名拦截引起，错误会包含已读取数量，避免将近期作品误报为全主页作品。
+
 `resolve_author_nickname(profile_url)` 直接请求作者资料接口，核对返回的 `sec_uid` 后返回昵称。它不依赖作品列表，作者没有作品时也能读取昵称；资料接口失败、作者标识不匹配或昵称为空时抛出 `AuthorWorksError`。作品列表接口可能返回空响应，不能用它的失败判断作者资料不可用或 Cookie 必然失效。
 
 `.env` 填写 `DY_COOKIES`：登录 https://www.douyin.com 后，从任意 `/aweme/v1/web/` 请求复制完整 Cookie，必须包含 `UIFID`。
