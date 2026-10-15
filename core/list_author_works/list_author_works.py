@@ -21,7 +21,7 @@ from ._web_sign import sign_url
 
 load_dotenv()
 
-__all__ = ["list_author_works", "resolve_author_profile"]
+__all__ = ["list_author_works", "resolve_author_profile", "resolve_author_nickname"]
 
 _SHORT_RE = re.compile(r"https?://v\.douyin\.com/[A-Za-z0-9_-]+/?", re.IGNORECASE)
 _USER_PATH_RE = re.compile(r"/(?:share/)?user/([A-Za-z0-9_-]{8,128})", re.IGNORECASE)
@@ -123,6 +123,44 @@ def resolve_author_profile(profile_text: str) -> dict:
         "sec_user_id": sec_user_id,
         "profile_url": f"https://www.douyin.com/user/{sec_user_id}",
     }
+
+
+def resolve_author_nickname(profile_url: str) -> str:
+    """直接读取作者资料中的昵称，不依赖作品列表或作者是否发布作品。"""
+    author = resolve_author_profile(profile_url)
+    try:
+        response = requests.get(
+            "https://www.douyin.com/aweme/v1/web/user/profile/other/",
+            params={
+                "device_platform": "webapp",
+                "aid": "6383",
+                "sec_user_id": author["sec_user_id"],
+            },
+            headers={
+                "User-Agent": get_profile()["ua"],
+                "Referer": author["profile_url"],
+            },
+            cookies=_cookies(),
+            timeout=20,
+        )
+        response.raise_for_status()
+    except requests.RequestException as extra:
+        raise AuthorWorksError("作者资料请求失败", {"profile_url": author["profile_url"]}) from extra
+    if not response.content:
+        raise AuthorWorksError(f"作者资料返回空响应（HTTP {response.status_code}）")
+    try:
+        payload = response.json()
+    except ValueError as extra:
+        raise AuthorWorksError("作者资料返回了无法解析的 JSON") from extra
+    if not isinstance(payload, dict) or payload.get("status_code") != 0:
+        raise AuthorWorksError("作者资料接口返回失败状态")
+    user = payload.get("user")
+    if not isinstance(user, dict) or user.get("sec_uid") != author["sec_user_id"]:
+        raise AuthorWorksError("作者资料缺少匹配的作者 ID，未采用返回的昵称")
+    nickname = str(user.get("nickname") or "").strip()
+    if not nickname:
+        raise AuthorWorksError("作者资料没有返回昵称")
+    return nickname
 
 
 def _webid(profile_url: str, cookies: dict[str, str]) -> str:
