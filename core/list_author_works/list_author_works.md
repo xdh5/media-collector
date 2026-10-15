@@ -4,6 +4,8 @@
 
 `list_author_works(profile_url, limit)` 读取作者主页最新作品，按发布时间从新到旧返回，最多 `limit` 条。每条包含 `aweme_id`、`work_url`、`title`、`author_name`、`sec_user_id`、`published_at`、`cover_url`、`is_video`。`work_url` 是 `https://www.douyin.com/video/{aweme_id}`，可交给 `download_video.download`。
 
+主页没有返回 `webid` 时，作品请求保留空值，不生成随机浏览器标识。随机值与 Cookie 不匹配时，作品接口可能返回 HTTP 200 空响应。接口业务状态失败时明确报错，不能当作作者没有作品。
+
 `resolve_author_profile(profile_text)` 把主页链接、`sec_user_id`，或整段「查看TA的更多作品」分享口令规范成 `sec_user_id` 和主页地址。口令里的 `v.douyin.com` 短链会先跟随跳转，落地页是 `iesdouyin.com/share/user/` 时取路径里的作者标识。
 
 ## 配置

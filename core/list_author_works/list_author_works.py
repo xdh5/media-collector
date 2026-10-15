@@ -181,7 +181,9 @@ def _webid(profile_url: str, cookies: dict[str, str]) -> str:
             return matched.group(1)
     except requests.RequestException:
         pass
-    return "".join(random.choice("0123456789") for _ in range(19))
+    # 主页受校验时可能拿不到 webid。随机生成的值会导致作品接口返回空响应。
+    # 留空交给服务端处理，不能伪造一个与当前 Cookie 无关的浏览器标识。
+    return ""
 
 
 def _check_risk(response: requests.Response) -> None:
@@ -343,6 +345,11 @@ def _request_page(profile_url: str, sec_user_id: str, max_cursor: str, cookies: 
         raise AuthorWorksError("作者作品列表返回了无法解析的 JSON", {"profile_url": profile_url}) from extra
     if not isinstance(payload, dict):
         raise AuthorWorksError("作者作品列表响应不是对象", {"profile_url": profile_url})
+    if payload.get("status_code") != 0:
+        raise AuthorWorksError("作者作品列表返回失败状态", {
+            "profile_url": profile_url,
+            "status_code": payload.get("status_code"),
+        })
     return payload
 
 
