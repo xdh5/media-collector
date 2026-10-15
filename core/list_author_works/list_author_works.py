@@ -23,7 +23,9 @@ load_dotenv()
 
 __all__ = ["list_author_works", "resolve_author_profile"]
 
-_USER_RE = re.compile(r"douyin\.com/user/([^/?#]+)", re.IGNORECASE)
+_SHORT_RE = re.compile(r"https?://v\.douyin\.com/[A-Za-z0-9_-]+/?", re.IGNORECASE)
+_USER_PATH_RE = re.compile(r"/(?:share/)?user/([A-Za-z0-9_-]{8,128})", re.IGNORECASE)
+_SEC_UID_RE = re.compile(r"[?&]sec_uid=([A-Za-z0-9_-]{8,128})", re.IGNORECASE)
 _WEBID_RE = re.compile(r'user_unique_id\\?":\\?"(\d{6,})')
 _SEC_USER_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 _SV_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -79,33 +81,42 @@ def _verify_fp(cookies: dict[str, str]) -> str:
     return "verify_" + base36 + "_" + "_".join(groups)
 
 
+def _sec_user_id(text: str) -> str:
+    """从主页、分享落地页或 sec_uid 参数里取出作者标识。路径优先于查询参数。"""
+    matched = _USER_PATH_RE.search(text) or _SEC_UID_RE.search(text)
+    if not matched:
+        return ""
+    return urllib.parse.unquote(matched.group(1))
+
+
 def resolve_author_profile(profile_text: str) -> dict:
-    """把作者主页链接或 sec_user_id 规范成主页地址。短链会先跟随跳转。"""
+    """把作者主页、分享口令或 sec_user_id 规范成主页地址。短链会先跟随跳转。"""
     text = str(profile_text or "").strip()
     if not text:
         raise InvalidParameterError("profile_url", "作者主页链接不能为空")
-    if "v.douyin.com" in text or "iesdouyin.com" in text:
+    short = _SHORT_RE.search(text)
+    if short:
+        short_url = short.group(0)
         try:
             response = requests.get(
-                text,
+                short_url,
                 headers={"User-Agent": get_profile()["ua"]},
                 allow_redirects=True,
                 timeout=20,
             )
             response.raise_for_status()
         except requests.RequestException as extra:
-            raise AuthorWorksError(f"作者短链无法打开：{extra}", {"profile_url": text}) from extra
+            raise AuthorWorksError(f"作者短链无法打开：{extra}", {"profile_url": short_url}) from extra
         text = str(response.url)
     if _SEC_USER_RE.fullmatch(text) and text.startswith("MS4w"):
         sec_user_id = text
     else:
-        matched = _USER_RE.search(text)
-        if not matched:
+        sec_user_id = _sec_user_id(text)
+        if not sec_user_id:
             raise InvalidParameterError(
                 "profile_url",
-                "请提供抖音作者主页链接，形如 https://www.douyin.com/user/MS4wLjAB...",
+                "请提供抖音作者主页或「查看TA的更多作品」分享口令，不要用单条作品链接",
             )
-        sec_user_id = urllib.parse.unquote(matched.group(1))
     if not _SEC_USER_RE.fullmatch(sec_user_id):
         raise InvalidParameterError("profile_url", "作者主页链接里的 sec_user_id 格式不正确")
     return {
