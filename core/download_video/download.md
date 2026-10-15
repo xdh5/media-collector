@@ -1,6 +1,6 @@
 # 视频下载
 
-实现在 `media_collector.download`。采集入口是 `media_collector`，下载是其中一项能力。工作流与 Agent 调用公开方法 `download`。
+实现在 media-collector 子仓库的 `core/download_video`。工作流与 Agent 调用公开方法 `download`。
 
 解析引擎移植自 [xingchen-video-download](https://github.com/xingchenyd/xingchen-video-download)，只保留其下载服务（yt-dlp 解析 + 访客 Cookie + 视频号元宝接口），未引入其 FastAPI 服务、前端页面与浏览器扫码登录。
 

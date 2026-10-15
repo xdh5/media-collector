@@ -33,7 +33,7 @@ from ._errors import ParseLinkError
 from ._urlutil import detect_platform, extract_url
 from ._wechat import VideoInfo, fetch_video as fetch_wechat
 
-logger = logging.getLogger("media-collector.download.extractor")
+logger = logging.getLogger("download_video.extractor")
 
 SPH_PATTERN = re.compile(r"weixin\.qq\.com/(?:sph|channel|finder)/", re.I)
 

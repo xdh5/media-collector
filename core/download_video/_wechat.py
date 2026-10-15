@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-logger = logging.getLogger("media-collector.download.wechat")
+logger = logging.getLogger("download_video.wechat")
 
 
 def _https(url: str) -> str:

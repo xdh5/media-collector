@@ -18,7 +18,7 @@ import requests
 
 from ._constants import DEFAULT_UA, MANUAL_COOKIE_DIR
 
-logger = logging.getLogger("media-collector.download.cookies")
+logger = logging.getLogger("download_video.cookies")
 
 _CACHE: dict[str, tuple[str, float]] = {}
 _CACHE_TTL_SECONDS = 6 * 3600

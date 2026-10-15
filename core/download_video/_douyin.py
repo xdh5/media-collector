@@ -16,7 +16,7 @@ from ._constants import PLATFORM_NAMES
 from ._errors import ParseLinkError
 from ._metadata import collect_topics
 
-logger = logging.getLogger("media-collector.download.douyin")
+logger = logging.getLogger("download_video.douyin")
 
 UA_MOBILE = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) "
