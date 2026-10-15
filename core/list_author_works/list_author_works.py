@@ -255,6 +255,8 @@ def _work(item: dict, sec_user_id: str) -> dict | None:
         "aweme_id": aweme_id,
         "work_url": f"https://www.douyin.com/video/{aweme_id}",
         "title": title,
+        "description": title,
+        "duration_seconds": float((item.get("video") or {}).get("duration") or 0) / 1000,
         "author_name": str(author.get("nickname") or "").strip(),
         "sec_user_id": str(author.get("sec_uid") or sec_user_id),
         "published_at": _published_at(item),
