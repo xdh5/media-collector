@@ -48,6 +48,7 @@ class ResolvedVideo:
     title: str
     cover_url: str
     video_url: str
+    video_urls: list[str] = field(default_factory=list)
     headers: dict[str, str] = field(default_factory=dict)
     audio_url: str = ""
     ext: str = "mp4"
@@ -70,6 +71,7 @@ def _to_resolved(data: dict, platform: str) -> ResolvedVideo:
         title=data.get("title") or "未命名视频",
         cover_url=_https(data.get("cover_url") or ""),
         video_url=str(data.get("video_url") or ""),
+        video_urls=[str(item) for item in (data.get("video_urls") or []) if str(item).startswith("http")],
         headers=data.get("headers") or {},
         audio_url=data.get("audio_url") or "",
         ext=data.get("ext") or "mp4",

@@ -85,6 +85,24 @@ def _stream_to_file(url: str, destination: Path, headers: dict[str, str]) -> Non
         raise DownloadError("下载完成但文件为空，请换一条链接后重试", {"url": url})
 
 
+def _stream_from_candidates(urls: list[str], destination: Path, headers: dict[str, str]) -> None:
+    """依次尝试解析结果中的 CDN 地址，全部失败后再报告最后一个错误。"""
+    candidates = list(dict.fromkeys(item for item in urls if item.startswith("http")))
+    last_error: DownloadError | None = None
+    for url in candidates:
+        try:
+            _stream_to_file(url, destination, headers)
+            return
+        except DownloadError as extra:
+            last_error = extra
+    if last_error is None:
+        raise DownloadError("解析成功但没有可用的视频下载地址")
+    raise DownloadError(
+        f"全部 {len(candidates)} 个视频地址均下载失败，最后一次错误：{last_error}",
+        {"candidate_count": len(candidates), **last_error.details},
+    ) from last_error
+
+
 def _mux(video_file: Path, audio_file: Path, destination: Path) -> None:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
@@ -128,19 +146,20 @@ def download(share_text: str, output_path: str | Path | None = None) -> dict:
     # 分轨（视频+独立音轨）时分别下载后用 ffmpeg 合并。
     audio_url = resolved.audio_url.strip()
     temporary = destination.with_name(f".{destination.stem}-{uuid4().hex}.tmp.mp4")
+    video_urls = resolved.video_urls or [resolved.video_url]
     try:
         if audio_url:
             video_part = temporary.with_suffix(".video")
             audio_part = temporary.with_suffix(".audio")
             try:
-                _stream_to_file(resolved.video_url, video_part, resolved.headers)
+                _stream_from_candidates(video_urls, video_part, resolved.headers)
                 _stream_to_file(audio_url, audio_part, resolved.headers)
                 _mux(video_part, audio_part, temporary)
             finally:
                 video_part.unlink(missing_ok=True)
                 audio_part.unlink(missing_ok=True)
         else:
-            _stream_to_file(resolved.video_url, temporary, resolved.headers)
+            _stream_from_candidates(video_urls, temporary, resolved.headers)
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)

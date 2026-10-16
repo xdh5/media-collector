@@ -267,13 +267,15 @@ def fetch_video(url: str) -> dict:
 
     video = aweme.get("video") or {}
     play_urls = (video.get("play_addr") or {}).get("url_list") or []
-    video_url = next((u for u in play_urls if u.startswith("http")), "")
-    if not video_url and video.get("play_addr"):
-        # 兜底：用 uri 构造播放直链。
+    video_urls = list(dict.fromkeys(str(item) for item in play_urls if str(item).startswith("http")))
+    if video.get("play_addr"):
+        # 接口返回的 CDN 节点可能单点回源失败，追加播放网关以便重新分配节点。
         uri = video["play_addr"].get("uri") or video["play_addr"].get("vid") or ""
         if uri:
-            video_url = f"https://www.iesdouyin.com/aweme/v1/play/?video_id={uri}&ratio=1080p&line=0"
-    if not video_url:
+            gateway_url = f"https://www.iesdouyin.com/aweme/v1/play/?video_id={uri}&ratio=1080p&line=0"
+            if gateway_url not in video_urls:
+                video_urls.append(gateway_url)
+    if not video_urls:
         raise ParseLinkError(
             "抖音接口未返回视频地址，作品可能是图集或已下架",
             {"url": url, "video_id": video_id},
@@ -298,7 +300,8 @@ def fetch_video(url: str) -> dict:
         "description": description,
         "topics": topics,
         "cover_url": cover_url,
-        "video_url": video_url,
+        "video_url": video_urls[0],
+        "video_urls": video_urls,
         # CDN 会校验拿到直链时使用的 UA，下载时必须原样回放。
         "headers": headers,
         "audio_url": "",
