@@ -30,6 +30,8 @@ _WEBID_RE = re.compile(r'user_unique_id\\?":\\?"(\d{6,})')
 _SEC_USER_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 _SV_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 _PAGE_COUNT = 18
+_MAX_CONSECUTIVE_EMPTY_PAGES = 10
+_PAGE_ATTEMPTS = 3
 _signer: ABogusPureSigner | None = None
 
 
@@ -365,28 +367,39 @@ def list_author_works(profile_url: str, limit: int) -> list[dict]:
     works: list[dict] = []
     max_cursor = "0"
     seen_cursors = set()
+    empty_page_count = 0
     while len(works) < limit:
         if max_cursor in seen_cursors:
             break
         seen_cursors.add(max_cursor)
-        payload = _request_page(
-            author["profile_url"],
-            author["sec_user_id"],
-            max_cursor,
-            cookies,
-            webid,
-        )
-        page = payload.get("aweme_list")
-        if not isinstance(page, list) or payload.get("has_more") not in (0, 1):
-            raise AuthorWorksError(
-                "作者作品分页响应不完整，无法继续读取早期作品；不能将已读取的近期作品当作全部作品。"
-                "请更新登录后的 DY_COOKIES 后重试，也可能是接口风控或签名被拦截",
-                {"read_count": len(works), "max_cursor": max_cursor},
+        for attempt in range(_PAGE_ATTEMPTS):
+            payload = _request_page(
+                author["profile_url"], author["sec_user_id"], max_cursor, cookies, webid,
             )
+            page = payload.get("aweme_list")
+            if isinstance(page, list) and payload.get("has_more") in (0, 1):
+                break
+            if attempt + 1 == _PAGE_ATTEMPTS:
+                raise AuthorWorksError(
+                    "作者作品分页响应不完整，同一游标重试后仍失败；不能将已读取作品当作完整列表。"
+                    "请检查当前进程使用的 DY_COOKIES 配置来源及登录状态",
+                    {"read_count": len(works), "max_cursor": max_cursor,
+                     "attempts": _PAGE_ATTEMPTS, "response_keys": sorted(payload),
+                     "has_more": payload.get("has_more"), "page_type": type(page).__name__},
+                )
+            time.sleep(attempt + 1)
         if not page:
-            if payload.get("has_more") == 1:
-                raise AuthorWorksError("作者作品列表仍有下一页但未返回作品，扫描中断", {"read_count": len(works)})
-            break
+            if payload.get("has_more") == 0:
+                break
+            # 隐藏或不可见作品可能形成空页；只有游标继续前进时才允许跳过。
+            empty_page_count += 1
+            if empty_page_count >= _MAX_CONSECUTIVE_EMPTY_PAGES:
+                raise AuthorWorksError("作者作品列表连续空页超过限制，扫描中断", {
+                    "read_count": len(works), "max_cursor": max_cursor,
+                    "next_cursor": payload.get("max_cursor"),
+                })
+        else:
+            empty_page_count = 0
         for item in page:
             if not isinstance(item, dict):
                 continue
@@ -396,7 +409,7 @@ def list_author_works(profile_url: str, limit: int) -> list[dict]:
             works.append(work)
             if len(works) >= limit:
                 break
-        if payload.get("has_more") != 1:
+        if len(works) >= limit or payload.get("has_more") != 1:
             break
         max_cursor = str(payload.get("max_cursor") or "")
         if not max_cursor or max_cursor == "0" or max_cursor in seen_cursors:
