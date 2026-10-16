@@ -14,7 +14,7 @@
 
 | 平台 | 免配置 | 说明 |
 | --- | --- | --- |
-| 抖音 | ✅ | 自动获取 ttwid 访客 Cookie |
+| 抖音 | 推荐流免配置 | 推荐流未返回指定作品时，用 `DY_COOKIES`（须含 UIFID）请求作品详情 |
 | 快手 | ✅ | 走 yt-dlp；会员或登录内容可放 `data/download/cookies/kuaishou.txt` |
 | 哔哩哔哩 | ✅ | 自动获取 buvid3，最高 1080P |
 | 微博 | ✅ | 自动获取访客 Cookie |

@@ -215,7 +215,7 @@ def parse_share_text(raw_text: str, sph_cookie: str = "") -> ResolvedVideo:
         )
     platform = detect_platform(url)
 
-    # 抖音：yt-dlp 的 web detail API 已被风控 403，改走移动端 feed 接口。
+    # 抖音：推荐流未命中时改走带登录态的作品详情，禁止使用推荐流里的其他视频。
     if platform == "douyin":
         try:
             return _to_resolved(fetch_douyin(url), "douyin")
