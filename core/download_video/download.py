@@ -6,12 +6,13 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from uuid import uuid4
 
 import requests
 from requests.adapters import HTTPAdapter
-from requests.exceptions import RequestException
+from requests.exceptions import ChunkedEncodingError, ConnectionError, RequestException, Timeout
 from urllib3.util.retry import Retry
 
 from ._constants import DOWNLOAD_CONNECT_TIMEOUT_SECONDS, DOWNLOAD_TIMEOUT_SECONDS, MUX_TIMEOUT_SECONDS
@@ -21,6 +22,8 @@ from ._extractor import parse_share_text
 __all__ = ["download"]
 
 _HEADERS_TIMEOUT = (DOWNLOAD_CONNECT_TIMEOUT_SECONDS, DOWNLOAD_TIMEOUT_SECONDS)
+# 读流中断（IncompleteRead 等）发生在响应已开始之后，urllib3 Retry 不会重试，需要整段重下。
+_STREAM_ATTEMPTS = 5
 
 
 def _safe_filename(video_id: str) -> str:
@@ -42,7 +45,7 @@ def _destination(output_path: str | Path | None, video_id: str) -> Path:
 
 
 def _stream_to_file(url: str, destination: Path, headers: dict[str, str]) -> None:
-    """带防盗链请求头流式下载，失败时清理半成品文件。"""
+    """带防盗链请求头流式下载。连接中断时整段重试，最终失败时清理半成品文件。"""
     session = requests.Session()
     retry = Retry(
         total=5,
@@ -52,16 +55,31 @@ def _stream_to_file(url: str, destination: Path, headers: dict[str, str]) -> Non
     )
     session.mount("http://", HTTPAdapter(max_retries=retry))
     session.mount("https://", HTTPAdapter(max_retries=retry))
-    try:
-        with session.get(url, headers=headers, stream=True, timeout=_HEADERS_TIMEOUT) as response:
-            response.raise_for_status()
-            with destination.open("wb") as target:
-                for chunk in response.iter_content(chunk_size=512 * 1024):
-                    if chunk:
-                        target.write(chunk)
-    except RequestException as extra:
-        destination.unlink(missing_ok=True)
-        raise DownloadError(f"下载失败：{extra}", {"url": url}) from extra
+    last_error: RequestException | None = None
+    for attempt in range(1, _STREAM_ATTEMPTS + 1):
+        try:
+            with session.get(url, headers=headers, stream=True, timeout=_HEADERS_TIMEOUT) as response:
+                response.raise_for_status()
+                with destination.open("wb") as target:
+                    for chunk in response.iter_content(chunk_size=512 * 1024):
+                        if chunk:
+                            target.write(chunk)
+            last_error = None
+            break
+        except (ChunkedEncodingError, ConnectionError, Timeout) as extra:
+            destination.unlink(missing_ok=True)
+            last_error = extra
+            if attempt >= _STREAM_ATTEMPTS:
+                break
+            time.sleep(attempt)
+        except RequestException as extra:
+            destination.unlink(missing_ok=True)
+            raise DownloadError(f"下载失败：{extra}", {"url": url}) from extra
+    if last_error is not None:
+        raise DownloadError(
+            f"下载失败（已重试 {_STREAM_ATTEMPTS} 次）：{last_error}",
+            {"url": url},
+        ) from last_error
     if not destination.is_file() or destination.stat().st_size <= 0:
         destination.unlink(missing_ok=True)
         raise DownloadError("下载完成但文件为空，请换一条链接后重试", {"url": url})
