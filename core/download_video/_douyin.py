@@ -100,11 +100,14 @@ def fetch_video(url: str) -> dict:
         raise ParseLinkError(f"抖音解析失败：{exc}", {"url": url}) from exc
 
     aweme_list = body.get("aweme_list") or []
-    aweme = next((a for a in aweme_list if str(a.get("aweme_id")) == video_id), aweme_list[0] if aweme_list else None)
+    aweme = next((a for a in aweme_list if isinstance(a, dict) and str(a.get("aweme_id")) == video_id), None)
     if not aweme:
         raise ParseLinkError(
-            "抖音接口未返回该作品，可能已被删除或设为私密",
-            {"url": url, "video_id": video_id},
+            "抖音接口未返回匹配的作品，停止解析，不能使用列表中的其他视频",
+            {"url": url, "video_id": video_id,
+             "returned_ids": [str(a.get("aweme_id")) for a in aweme_list if isinstance(a, dict)],
+             "returned_titles": [str(a.get("desc") or "")[:200] for a in aweme_list if isinstance(a, dict)],
+             "status_code": body.get("status_code")},
         )
 
     video = aweme.get("video") or {}
