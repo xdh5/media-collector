@@ -11,6 +11,8 @@ import time
 import urllib.parse
 from datetime import datetime, timezone
 
+from pathlib import Path
+
 import requests
 from dotenv import load_dotenv
 
@@ -19,7 +21,8 @@ from ._errors import AuthorWorksError, InvalidParameterError
 from ._profile import get_profile
 from ._web_sign import sign_url
 
-load_dotenv()
+# DY_COOKIES 只放在 media-collector 自己的 .env 里，不依赖调用方的当前目录。
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
 
 __all__ = ["list_author_works", "resolve_author_profile", "resolve_author_nickname"]
 

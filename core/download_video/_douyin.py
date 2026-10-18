@@ -13,6 +13,7 @@ import random
 import re
 import time
 import urllib.parse
+from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
@@ -76,14 +77,14 @@ def _expand_short_url(session: requests.Session, url: str) -> str:
 
 
 def _cookie_jar() -> dict[str, str]:
-    """读取 DY_COOKIES。进程里没有时再从当前目录的 .env 补一次。"""
+    """读取 DY_COOKIES。进程里没有时再从 media-collector 的 .env 补一次。"""
     raw = os.getenv("DY_COOKIES", "").strip()
     if not raw:
         try:
             from dotenv import load_dotenv
         except ImportError:
             return {}
-        load_dotenv()
+        load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
         raw = os.getenv("DY_COOKIES", "").strip()
     cookies: dict[str, str] = {}
     for item in raw.split(";"):
