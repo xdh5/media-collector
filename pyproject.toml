@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "media-collector"
@@ -14,5 +14,5 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
-[tool.setuptools.packages.find]
-where = ["core"]
+[tool.hatch.build.targets.wheel]
+packages = ["core/download_video", "core/list_author_works", "core/media_collector"]

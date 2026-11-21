@@ -1,23 +1,8 @@
 """视频下载常量。"""
 
-from pathlib import Path
+from media_collector import workspace_root
 
-
-def _storage_root() -> Path:
-    """独立运行时用本仓库根目录；作为 media-factory 子仓库时用工厂根目录。"""
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        git_dir = parent / ".git"
-        if not git_dir.is_dir():
-            continue
-        if (parent / "core").is_dir():
-            return parent
-        if (parent / "media_collector").is_dir():
-            return parent
-    return here.parents[2]
-
-
-_STORAGE_ROOT = _storage_root()
+_STORAGE_ROOT = workspace_root()
 DEFAULT_VIDEO_DIR = _STORAGE_ROOT / "data" / "download" / "videos"
 # 手动登录 Cookie 目录（Netscape 格式），<platform>.txt 优先于自动访客 Cookie。
 MANUAL_COOKIE_DIR = _STORAGE_ROOT / "data" / "download" / "cookies"

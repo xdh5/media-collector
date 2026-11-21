@@ -81,10 +81,10 @@ def _cookie_jar() -> dict[str, str]:
     raw = os.getenv("DY_COOKIES", "").strip()
     if not raw:
         try:
-            from dotenv import load_dotenv
+            from media_collector import load_configuration
         except ImportError:
             return {}
-        load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
+        load_configuration()
         raw = os.getenv("DY_COOKIES", "").strip()
     cookies: dict[str, str] = {}
     for item in raw.split(";"):

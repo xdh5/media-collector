@@ -6,7 +6,11 @@
 
 ## 入口
 
-把 `core` 放进 Python 路径后：
+使用 uv 安装后即可导入：
+
+```powershell
+uv sync --no-editable
+```
 
 ```python
 from download_video import download, DownloadError
@@ -27,8 +31,8 @@ core/
 
 ## 在 media-factory 中
 
-本仓库是 [media-factory](https://github.com/xdh5/media-factory) 的子仓库，路径为 `integrations/media-collector`。工厂导入 `core` 时会把这里的 `core` 目录放进 Python 路径，然后调用 `download_video` 和 `list_author_works`。嵌在工厂里时，视频和 Cookie 写到工厂仓库的 `data/download/`。
+本仓库是 [media-factory](https://github.com/xdh5/media-factory) 的工作区依赖，路径为 `integrations/media-collector`。工厂通过 uv 安装发行包，直接调用 `download_video` 和 `list_author_works`。
 
-独立运行时，这些文件写到本仓库的 `data/download/`。
+视频和 Cookie 默认写到当前工作目录的 `data/download/`，可通过 `MEDIA_COLLECTOR_WORKSPACE` 指定工作目录；环境配置默认读取工作目录的 `.env`，可通过 `MEDIA_COLLECTOR_ENV_FILE` 指定文件。显式环境变量优先于配置文件。
 
 下载细节见 [core/download_video/download.md](core/download_video/download.md)。作者作品列表见 [core/list_author_works/list_author_works.md](core/list_author_works/list_author_works.md)。
